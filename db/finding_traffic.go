@@ -414,6 +414,10 @@ func RecordFindingTx(ctx context.Context, tx *sql.Tx, in RecordFindingInput, pre
 			return nil, errors.New("intent_id must be an intent of this task (intents of associated tasks are read-only)")
 		}
 	}
+	// The severity comes from the model as free text. Store the canonical level
+	// ("High" -> "high"): the severity counters and the min_severity filter of
+	// the notification channels compare it exactly.
+	in.Severity = strings.ToLower(strings.TrimSpace(in.Severity))
 	payload, _ := json.Marshal(map[string]any{"vulnclass": in.VulnClass, "name": in.Name, "severity": in.Severity, "summary": in.Summary, "evidence": map[string]any{"by": in.Worker, "poc": in.Evidence}})
 	out := &RecordedFinding{}
 	if err := tx.QueryRow(`INSERT INTO exploration_nodes(exploration_id,kind,payload,priority,state,origin)
