@@ -78,4 +78,20 @@ func TestRetargetTaskUpdatesGoalConstraintsScopeAndStopsStaleIntents(t *testing.
 	if staleNode.State != "stopped" || keepNode.State != "open" {
 		t.Fatalf("intent states mismatch: stale=%s keep=%s", staleNode.State, keepNode.State)
 	}
+	scopes, err := m.Assets().ListTaskScope(mustTaskID(t, task.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var newScoped bool
+	for _, sc := range scopes {
+		if sc.Domain == "old-0c3f.ctf.local" {
+			t.Fatalf("old host is still in task scope after retarget: %+v", scopes)
+		}
+		if sc.Kind == "subdomain" && sc.Domain == "new-4791.ctf.local" {
+			newScoped = true
+		}
+	}
+	if !newScoped {
+		t.Fatalf("new host has no subdomain scope row after retarget: %+v", scopes)
+	}
 }
