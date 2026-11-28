@@ -143,15 +143,17 @@ func (d *DB) RetargetTask(ctx context.Context, taskID int64, oldHost, newBaseURL
 		res.ConstraintsUpdated++
 	}
 
-	// Replace task_scope entries matching oldH with newH.
-	delRes, err := tx.ExecContext(ctx, `DELETE FROM task_scope WHERE task_id=$1 AND LOWER(value)=$2`, taskID, oldH)
+	// Replace task_scope entries matching oldH with newH. A host scope row keeps
+	// its host in the domain column (value is only for icp/keyword rows), and the
+	// coverage queries match on domain.
+	delRes, err := tx.ExecContext(ctx, `DELETE FROM task_scope WHERE task_id=$1 AND kind IN ('root_domain','subdomain') AND LOWER(domain)=$2`, taskID, oldH)
 	if err != nil {
 		return nil, err
 	}
 	if n, _ := delRes.RowsAffected(); n > 0 {
 		res.ScopesUpdated += int(n)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO task_scope(task_id, kind, value, source, reason) VALUES ($1, 'subdomain', $2, 'manual', 'retargeted to new instance') ON CONFLICT DO NOTHING`, taskID, newH); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO task_scope(task_id, kind, domain, source, reason) VALUES ($1, 'subdomain', $2, 'manual', 'retargeted to new instance') ON CONFLICT DO NOTHING`, taskID, newH); err != nil {
 		return nil, err
 	}
 	res.ScopesUpdated++
